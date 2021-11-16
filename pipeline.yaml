@@ -1,0 +1,95 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Deployment pipeline for a website hosted with S3 and CloudFront
+
+Parameters:
+  ServiceName:
+    Description: The name of the project
+    Default: mdinicola-com
+    Type: String
+  RepositoryName:
+    Description: The full repository name e.g some-user/my-repo
+    Default: mdinicola/mdinicola
+    Type: String
+  RepositoryBranchName:
+    Description: The repository branch to watch for changes
+    Default: main
+    Type: String
+  RepositoryConnectionArn:
+    Description: The ARN of the CodeStar connection to the external repository
+    Type: String
+  PipelineRoleName:
+    Description: The IAM role name of the pipeline role
+    Default: CodePipelineRole
+    Type: String
+  PipelineNotificationTopicName:
+    Description: The name of the SNS topic for pipeline notifications
+    Default: CodePipelineNotifications
+    Type: String
+  ArtifactsBucketName:
+    Description: The name of the artifacts bucket
+    Type: String
+  WebsiteBucketName:
+    Description: The name of the website bucket
+    Default: mdinicola.com 
+    Type: String
+
+Resources:
+  Pipeline:
+    Type: AWS::CodePipeline::Pipeline
+    Properties:
+      Name: !Ref ServiceName
+      ArtifactStore: 
+        Location: !Ref ArtifactsBucketName
+        Type: S3
+      RoleArn: !Sub arn:aws:iam::${AWS::AccountId}:role/service-role/${PipelineRoleName}
+      Stages:
+        - Name: Source
+          Actions:
+            - Name: GitHubSource
+              ActionTypeId:
+                Category: Source
+                Owner: AWS
+                Provider: CodeStarSourceConnection
+                Version: 1
+              Configuration:
+                ConnectionArn: !Ref RepositoryConnectionArn
+                FullRepositoryId: !Ref RepositoryName
+                BranchName: !Ref RepositoryBranchName
+                OutputArtifactFormat: CODE_ZIP
+                DetectChanges: true
+              OutputArtifacts:
+                - Name: SourceArtifact
+        - Name: Deploy
+          Actions:
+            - Name: DeployToS3
+              ActionTypeId:
+                Category: Deploy
+                Owner: AWS
+                Provider: S3
+                Version: 1
+              InputArtifacts:
+                - Name: SourceArtifact
+              Configuration: 
+                BucketName: !Ref WebsiteBucketName
+                Extract: true
+              RunOrder: 1
+
+  PipelineNotificationRule:
+    Type: 'AWS::CodeStarNotifications::NotificationRule'
+    Properties:
+      Name: !Sub "${ServiceName}-PipelineNotificationRule"
+      DetailType: BASIC
+      Resource: !Sub "arn:aws:codepipeline:${AWS::Region}:${AWS::AccountId}:${Pipeline}"
+      EventTypeIds:
+        - codepipeline-pipeline-pipeline-execution-succeeded
+        - codepipeline-pipeline-pipeline-execution-canceled
+        - codepipeline-pipeline-pipeline-execution-failed
+      Targets: 
+        - TargetType: SNS 
+          TargetAddress: !Sub "arn:aws:sns:${AWS::Region}:${AWS::AccountId}:${PipelineNotificationTopicName}"
+
+Outputs:
+  PipelineName:
+    Value: !Ref Pipeline
+  PipelineVersion:
+    Value: !GetAtt Pipeline.Version
