@@ -7,9 +7,9 @@
 	>
 <channel>
 	<title>
-	Comments for Mike Di Nicola	</title>
-	<atom:link href="/comments/feed/" rel="self" type="application/rss+xml" />
-	<link>/</link>
+	Comments on: Hello world!	</title>
+	<atom:link href="/2020/05/24/hello-world/feed/" rel="self" type="application/rss+xml" />
+	<link>/2020/05/24/hello-world/</link>
 	<description>Principal Build &#38; Release Engineer at Firmex, Sci-fi &#38; Anime fan, Gamer, Human, He/Him</description>
 	<lastBuildDate>Sun, 24 May 2020 22:03:56 +0000</lastBuildDate>
 	<sy:updatePeriod>
@@ -19,7 +19,7 @@
 	<generator>https://wordpress.org/?v=5.8.2</generator>
 	<item>
 		<title>
-		Comment on Hello world! by A WordPress Commenter		</title>
+		By: A WordPress Commenter		</title>
 		<link>/2020/05/24/hello-world/#comment-1</link>
 
 		<dc:creator><![CDATA[A WordPress Commenter]]></dc:creator>

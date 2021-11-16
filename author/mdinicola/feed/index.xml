@@ -8,8 +8,8 @@
 	>
 
 <channel>
-	<title>Mike Di Nicola</title>
-	<atom:link href="/feed/" rel="self" type="application/rss+xml" />
+	<title>mdinicola &#8211; Mike Di Nicola</title>
+	<atom:link href="/author/mdinicola/feed/" rel="self" type="application/rss+xml" />
 	<link>/</link>
 	<description>Principal Build &#38; Release Engineer at Firmex, Sci-fi &#38; Anime fan, Gamer, Human, He/Him</description>
 	<lastBuildDate>Sun, 24 May 2020 22:03:56 +0000</lastBuildDate>
