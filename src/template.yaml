@@ -5,7 +5,10 @@ Globals:
   Function:
     Runtime: python3.8
     Timeout: 30
-
+Parameters:
+  ServiceName:
+    Type: String
+    Default: mdinicola-ca
 Resources:
   LambdaRole:
     Type: AWS::IAM::Role
