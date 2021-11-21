@@ -8,7 +8,7 @@ Globals:
 Parameters:
   ServiceName:
     Type: String
-    Default: mdinicola-ca
+    Default: mdinicola-com
 Resources:
   LambdaRole:
     Type: AWS::IAM::Role
