@@ -32,15 +32,12 @@ Resources:
                 Resource: '*'
               - Sid: AllowCodePipelineActions
                 Effect: Allow
-                Action: [
-                  'codepipeline:PutJobSuccessResult',
-                  'codepipeline:PutJobFailureResult'
-                ]
+                Action: 
+                  - 'codepipeline:PutJobSuccessResult'
+                  - 'codepipeline:PutJobFailureResult'
                 Resource: '*'
-              - Sid: AllowLogs
-                Effect: Allow
-                Action: logs:*
-                Resource: '*'
+        ManagedPolicyArns:
+          - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
 
   InvalidateContentFunction:
     Type: AWS::Serverless::Function
