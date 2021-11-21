@@ -6,7 +6,7 @@ phases:
       python: 3.8
   build:
     commands:
-      - sam build 
+      - sam build --template-file src/template.yaml
   post_build:
     commands:
       - bash -c "if [ /"$CODEBUILD_BUILD_SUCCEEDING/" == /"0/" ]; then exit 1; fi"
