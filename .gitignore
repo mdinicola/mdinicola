@@ -3,3 +3,5 @@
 .terraform/
 terraform.tfvars
 terraform.config
+.aws-sam/
+
