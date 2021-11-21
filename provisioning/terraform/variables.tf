@@ -24,8 +24,16 @@ variable "repository_connection_arn" {
   description = "The ARN of the CodeStar connection to the external repository"
   type = string
 }
+variable "build_project_role_arn" {
+  description = "The IAM role ARN to use with CodeBuild"
+  type = string
+}
+variable "deploy_role_arn" {
+  description = "The IAM role ARN for deployment"
+  type = string
+}
 variable "pipeline_role_arn" {
-  description = "The IAM role ARN of the pipeline role"
+  description = "The IAM role ARN to use with CodePipeline"
   type = string
 }
 variable "pipeline_notification_topic_arn" {
