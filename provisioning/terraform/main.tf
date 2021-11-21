@@ -125,6 +125,18 @@ resource "aws_codepipeline" "pipeline" {
       }
       run_order = 3
     }
+    action {
+      name = "InvalidateContent"
+      category = "Invoke"
+      owner = "AWS"
+      provider = "Lambda"
+      version = 1
+      configuration = {
+        FunctionName = "${var.service_name}-InvalidateContent"
+        UserParameters = var.website_distribution_id
+      }
+      run_order = 4
+    }
   }
 }
 
