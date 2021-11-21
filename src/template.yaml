@@ -1,0 +1,49 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Forces refresh (invlidates) all content for a provided CloudFront distribution
+Globals:
+  Function:
+    Runtime: python3.8
+    Timeout: 30
+
+Resources:
+  LambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: lambda.amazonaws.com
+          Action:
+          - sts:AssumeRole
+      Policies:
+        - PolicyName: AllowInvalidationFromLambda
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: AllowInvalidationAction
+                Effect: Allow
+                Action: cloudfront:CreateInvalidation
+                Resource: '*'
+              - Sid: AllowCodePipelineActions
+                Effect: Allow
+                Action: [
+                  'codepipeline:PutJobSuccessResult',
+                  'codepipeline:PutJobFailureResult'
+                ]
+                Resource: '*'
+              - Sid: AllowLogs
+                Effect: Allow
+                Action: logs:*
+                Resource: '*'
+
+  InvalidateContentFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: 'InvalidateContent'
+      CodeUri: /
+      Handler: invaldate_content.lambda_handler
+      Role: !GetAtt LambdaRole.Arn
+
