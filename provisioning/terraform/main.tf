@@ -93,7 +93,7 @@ resource "aws_codepipeline" "pipeline" {
         Capabilities = "CAPABILITY_IAM,CAPABILITY_NAMED_IAM,CAPABILITY_AUTO_EXPAND"
         RoleArn = var.deploy_role_arn
         StackName = var.service_name
-        TemplatePath = "BuildArtifact::lambdas/packaged-template.yaml"
+        TemplatePath = "BuildArtifact::src/packaged-template.yaml"
         ChangeSetName = "${var.service_name}-Deploy"
       }
       input_artifacts = [ "BuildArtifact" ]
