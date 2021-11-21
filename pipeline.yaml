@@ -17,6 +17,14 @@ Parameters:
   RepositoryConnectionArn:
     Description: The ARN of the CodeStar connection to the external repository
     Type: String
+  BuildProjectRoleName:
+    Description: The IAM role name to use with CodeBuild
+    Default: CodeBuildRole
+    Type: String
+  DeployRoleName:
+    Description: The IAM role name to deploy the CloudFormation stack
+    Default: ServerlessDeploymentRole
+    Type: String
   PipelineRoleName:
     Description: The IAM role name of the pipeline role
     Default: CodePipelineRole
@@ -32,8 +40,95 @@ Parameters:
     Description: The name of the website bucket
     Default: mdinicola.com 
     Type: String
+  WebsiteDistributionId:
+    Description: The CloudFront distribution id for the website
+    Type: String
 
 Resources:
+  BuildProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: !Ref ServiceName
+      ServiceRole: !Sub arn:aws:iam::${AWS::AccountId}:role/service-role/${BuildProjectRoleName}
+      Source:
+        Type: CODEPIPELINE
+        BuildSpec: buildspec.yaml
+      Artifacts: 
+        Type: CODEPIPELINE
+      Environment:
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: 'aws/codebuild/amazonlinux2-x86_64-standard:3.0'
+        Type: LINUX_CONTAINER
+        EnvironmentVariables:
+          - Name: ARTIFACTS_BUCKET
+            Value: !Ref ArtifactsBucketName
+          - Name: ARTIFACTS_FOLDER
+            Value: !Ref ServiceName
+
+  InvalidateContentFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "${ServiceName}-InvalidateContent"
+      Description: Forces refresh (invlidates) all content for a provided CloudFront distribution
+      MemorySize: 128
+      Runtime: python3.8
+      Handler: lambda_handler
+      Timeout: 30
+      Code:
+        ZipFile: |
+          import time
+          import logging
+          from botocore.exceptions import ClientError
+          import boto3
+
+          LOGGER = logging.getLogger()
+          LOGGER.setLevel(logging.INFO)
+
+          def codepipeline_success(job_id):
+              try:
+                  codepipeline = boto3.client('codepipeline')
+                  codepipeline.put_job_success_result(jobId=job_id)
+                  LOGGER.info('===SUCCESS===')
+                  return True
+              except ClientError as err:
+                  LOGGER.error("Failed to PutJobSuccessResult for CodePipeline!\n%s", err)
+                  return False
+
+          def codepipeline_failure(job_id, message):
+              try:
+                  codepipeline = boto3.client('codepipeline')
+                  codepipeline.put_job_failure_result(
+                      jobId=job_id,
+                      failureDetails={'type': 'JobFailed', 'message': message}
+                  )
+                  LOGGER.info('===FAILURE===')
+                  return True
+              except ClientError as err:
+                  LOGGER.error("Failed to PutJobFailureResult for CodePipeline!\n%s", err)
+                  return False
+
+
+          def lambda_handler(event, context):
+              LOGGER.info(event)
+              try:
+                  job_id = event['CodePipeline.job']['id']
+                  distId = event['CodePipeline.job']['data']['actionConfiguration']['configuration']['UserParameters']
+                  client = boto3.client('cloudfront')
+                  client.create_invalidation(DistributionId=distId,
+                      InvalidationBatch={
+                          'Paths': {
+                              'Quantity': 1,
+                              'Items': ['/*']
+                      },
+                      'CallerReference': str(time.time())
+                  })
+                  codepipeline_success(job_id)
+                  
+              except KeyError as err:
+                  LOGGER.error("Could not retrieve CodePipeline Job ID!\n%s", err)
+                  codepipeline_failure(job_id, err)
+                  return False
+        
   Pipeline:
     Type: AWS::CodePipeline::Pipeline
     Properties:
@@ -59,8 +154,49 @@ Resources:
                 DetectChanges: true
               OutputArtifacts:
                 - Name: SourceArtifact
+        - Name: Build
+          Actions: 
+            - Name: Build
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Provider: CodeBuild
+                Version: 1
+              Configuration:
+                ProjectName: !Ref ServiceName
+              InputArtifacts:
+                - Name: SourceArtifact
+              OutputArtifacts:
+                - Name: BuildArtifact
         - Name: Deploy
           Actions:
+            - Name: CreateChangeSetForLambda
+              ActionTypeId:
+                Category: Deploy
+                Owner: AWS
+                Provider: CloudFormation
+                Version: 1
+              InputArtifacts:
+                - Name: BuildArtifact
+              Configuration: 
+                ActionMode: CHANGE_SET_REPLACE
+                Capabilities: CAPABILITY_IAM,CAPABILITY_NAMED_IAM,CAPABILITY_AUTO_EXPAND
+                RoleArn: !Sub arn:aws:iam::${AWS::AccountId}:role/${DeployRoleName}
+                StackName: !Ref ServiceName
+                TemplatePath: "BuildArtifact::packaged-template.yaml"
+                ChangeSetName: !Sub a-${ServiceName}-Deploy
+              RunOrder: 1
+            - Name: ExecuteChangeSetForLambda
+              ActionTypeId:
+                Category: Deploy
+                Owner: AWS
+                Provider: CloudFormation
+                Version: 1
+              Configuration: 
+                ActionMode: CHANGE_SET_EXECUTE
+                StackName: !Ref ServiceName
+                ChangeSetName: !Sub a-${ServiceName}-Deploy
+              RunOrder: 2
             - Name: DeployToS3
               ActionTypeId:
                 Category: Deploy
@@ -73,6 +209,16 @@ Resources:
                 BucketName: !Ref WebsiteBucketName
                 Extract: true
               RunOrder: 1
+            - Name: InvalidateContent
+              ActionTypeId:
+                Category: Invoke
+                Owner: AWS
+                Provider: Lambda
+                Version: 1
+              Configuration: 
+                FunctionName: !Ref InvalidateContentFunction
+                UserParameters: !Ref WebsiteDistributionId
+              RunOrder: 2
 
   PipelineNotificationRule:
     Type: 'AWS::CodeStarNotifications::NotificationRule'

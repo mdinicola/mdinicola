@@ -42,7 +42,7 @@ Resources:
   InvalidateContentFunction:
     Type: AWS::Serverless::Function
     Properties:
-      FunctionName: 'InvalidateContent'
+      FunctionName: !Sub "${ServiceName}-InvalidateContent"
       CodeUri: ./
       Handler: invalidate_content.lambda_handler
       Role: !GetAtt LambdaRole.Arn
