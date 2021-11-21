@@ -1,0 +1,16 @@
+version: 0.2
+
+phases:
+  install:
+    runtime-versions:
+      python: 3.8
+  build:
+    commands:
+      - sam build --template-file src/template.yaml
+  post_build:
+    commands:
+      - bash -c "if [ /"$CODEBUILD_BUILD_SUCCEEDING/" == /"0/" ]; then exit 1; fi"
+      - sam package --template-file src/template.yaml --output-template-file src/packaged-template.yaml --s3-bucket $ARTIFACTS_BUCKET --s3-prefix $ARTIFACTS_FOLDER
+artifacts:
+    files:
+      - src/packaged-template.yaml
