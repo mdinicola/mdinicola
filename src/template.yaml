@@ -36,8 +36,8 @@ Resources:
                   - 'codepipeline:PutJobSuccessResult'
                   - 'codepipeline:PutJobFailureResult'
                 Resource: '*'
-        ManagedPolicyArns:
-          - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
 
   InvalidateContentFunction:
     Type: AWS::Serverless::Function
