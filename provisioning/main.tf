@@ -15,6 +15,56 @@ provider "aws" {
   }
 }
 
+resource "aws_s3_bucket" "website_bucket" {
+  bucket = var.website_bucket_name
+  website {
+    index_document = "index.html"
+  }
+  server_side_encryption_configuration {
+    rule {
+      apply_server_side_encryption_by_default {
+        sse_algorithm = "AES256"
+      }
+    }
+  }
+  policy = <<POLICY
+{
+	"Version": "2012-10-17",
+	"Statement": [{
+		"Sid": "PublicReadGetObject",
+		"Effect": "Allow",
+		"Principal": "*",
+		"Action": "s3:GetObject",
+		"Resource": "arn:aws:s3:::${var.website_bucket_name}/*"
+	}]
+}
+POLICY
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
+resource "aws_route53_record" "mdinicola_com_A" {
+  zone_id = var.hosted_zone_id
+  name    = "mdinicola.com"
+  type    = "A"
+  alias {
+    name                   = "d1wzzgw9mfhbc7.cloudfront.net."
+    zone_id                = "Z2FDTNDATAQYW2" # hosted_zone_id for cloudfront distribution aliases
+    evaluate_target_health = "false"
+  }
+}
+
+resource "aws_route53_record" "www_mdinicola_com_CNAME" {
+  zone_id = var.hosted_zone_id
+  name    = "www.mdinicola.com"
+  type    = "CNAME"
+  ttl     = 3600
+  records = [
+    "d1wzzgw9mfhbc7.cloudfront.net.",
+  ]
+}
+
 resource "aws_codebuild_project" "buildproject" {
   name = var.service_name
   service_role = var.build_project_role_arn

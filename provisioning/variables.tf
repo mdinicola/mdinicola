@@ -52,3 +52,6 @@ variable "website_distribution_id" {
   description = "The CloudFront distribution id for the website"
   type = string
 }
+variable "hosted_zone_id" {
+  type = string
+}
