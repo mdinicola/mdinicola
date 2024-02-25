@@ -3,7 +3,7 @@ Transform: AWS::Serverless-2016-10-31
 Description: Forces refresh (invlidates) all content for a provided CloudFront distribution
 Globals:
   Function:
-    Runtime: python3.8
+    Runtime: python3.9
     Timeout: 30
 Parameters:
   ServiceName:
