@@ -14,30 +14,11 @@ provider "aws" {
   }
 }
 
-resource "aws_s3_bucket" "website_bucket" {
+resource "aws_s3_bucket_website_configuration" "website_bucket" {
   bucket = var.website_bucket_name
-  website {
-    index_document = "index.html"
+  index_document {
+    suffix = "index.html"
   }
-  server_side_encryption_configuration {
-    rule {
-      apply_server_side_encryption_by_default {
-        sse_algorithm = "AES256"
-      }
-    }
-  }
-  policy = <<POLICY
-{
-	"Version": "2012-10-17",
-	"Statement": [{
-		"Sid": "PublicReadGetObject",
-		"Effect": "Allow",
-		"Principal": "*",
-		"Action": "s3:GetObject",
-		"Resource": "arn:aws:s3:::${var.website_bucket_name}/*"
-	}]
-}
-POLICY
   lifecycle {
     prevent_destroy = true
   }
