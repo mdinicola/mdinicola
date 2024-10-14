@@ -1,13 +1,12 @@
 # Copy terraform.config.example to terraform.config and enter your values
 # Run terraform init -backend-config=terraform.config
 
-terraform {
-  backend "s3" {}
-}
-
 provider "aws" {
   profile = var.aws_profile
   region  = var.aws_region
+  assume_role {
+    role_arn = var.aws_assume_role_arn
+  }
   default_tags {
     tags = {
       Component = var.service_name
@@ -15,53 +14,34 @@ provider "aws" {
   }
 }
 
-resource "aws_s3_bucket" "website_bucket" {
+resource "aws_s3_bucket_website_configuration" "website_bucket" {
   bucket = var.website_bucket_name
-  website {
-    index_document = "index.html"
+  index_document {
+    suffix = "index.html"
   }
-  server_side_encryption_configuration {
-    rule {
-      apply_server_side_encryption_by_default {
-        sse_algorithm = "AES256"
-      }
-    }
-  }
-  policy = <<POLICY
-{
-	"Version": "2012-10-17",
-	"Statement": [{
-		"Sid": "PublicReadGetObject",
-		"Effect": "Allow",
-		"Principal": "*",
-		"Action": "s3:GetObject",
-		"Resource": "arn:aws:s3:::${var.website_bucket_name}/*"
-	}]
-}
-POLICY
   lifecycle {
     prevent_destroy = true
   }
 }
 
 resource "aws_route53_record" "mdinicola_com_A" {
-  zone_id = var.hosted_zone_id
+  zone_id = var.route53_hosted_zone_id
   name    = "mdinicola.com"
   type    = "A"
   alias {
-    name                   = "d1wzzgw9mfhbc7.cloudfront.net."
-    zone_id                = "Z2FDTNDATAQYW2" # hosted_zone_id for cloudfront distribution aliases
+    name                   = "${var.cloudfront_domain}"
+    zone_id                = "${var.cloudfront_hosted_zone_id}" 
     evaluate_target_health = "false"
   }
 }
 
 resource "aws_route53_record" "www_mdinicola_com_CNAME" {
-  zone_id = var.hosted_zone_id
+  zone_id = var.route53_hosted_zone_id
   name    = "www.mdinicola.com"
   type    = "CNAME"
   ttl     = 3600
   records = [
-    "d1wzzgw9mfhbc7.cloudfront.net.",
+    "${var.cloudfront_domain}",
   ]
 }
 

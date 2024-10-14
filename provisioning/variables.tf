@@ -2,6 +2,10 @@ variable "aws_profile" {
   description = "The name of the credentials profile for authentication with AWS"
   type = string
 }
+variable "aws_assume_role_arn" {
+  description = "The ARN of the IAM role to assume with AWS"
+  type = string
+}
 variable "aws_region" {
   description = "The AWS region to use for provisioning resources"
   default = "ca-central-1"
@@ -52,6 +56,15 @@ variable "website_distribution_id" {
   description = "The CloudFront distribution id for the website"
   type = string
 }
-variable "hosted_zone_id" {
+variable "cloudfront_domain" {
+  description = "The CloudFront domain for the website"
+  type = string
+}
+variable "cloudfront_hosted_zone_id" {
+  description = "The value of the CloudFront Alias Hosted Zone Id.  See https://docs.aws.amazon.com/Route53/latest/APIReference/API_AliasTarget.html"
+  type = string
+}
+variable "route53_hosted_zone_id" {
+  description = "The hosted zone id in Route53"
   type = string
 }
