@@ -4,5 +4,6 @@ terraform {
     key     = ""
     region  = "ca-central-1"
     profile = ""
+    role_arn = ""
   }
 }
