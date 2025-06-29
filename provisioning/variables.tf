@@ -52,8 +52,8 @@ variable "website_bucket_name" {
   description = "The name of the website bucket"
   type = string
 }
-variable "website_distribution_id" {
-  description = "The CloudFront distribution id for the website"
+variable "cloudfront_origin_id" {
+  description = "The CloudFront distribution origin id for the website"
   type = string
 }
 variable "cloudfront_domain" {
@@ -66,5 +66,9 @@ variable "cloudfront_hosted_zone_id" {
 }
 variable "route53_hosted_zone_id" {
   description = "The hosted zone id in Route53"
+  type = string
+}
+variable "acm_certificate_arn" {
+  description = "The ARN of the ACM Certificate to use"
   type = string
 }

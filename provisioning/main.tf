@@ -1,5 +1,4 @@
-# Copy terraform.config.example to terraform.config and enter your values
-# Run terraform init -backend-config=terraform.config
+# Copy backend.tf.example to backend.tf and enter your values
 
 provider "aws" {
   profile = var.aws_profile
@@ -14,14 +13,107 @@ provider "aws" {
   }
 }
 
-resource "aws_s3_bucket_website_configuration" "website_bucket" {
+resource "aws_s3_bucket" "website_bucket" {
   bucket = var.website_bucket_name
-  index_document {
-    suffix = "index.html"
+}
+
+resource "aws_s3_bucket_server_side_encryption_configuration" "website_bucket" {
+  bucket = aws_s3_bucket.website_bucket.id
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm = "AES256"
+    }
   }
-  lifecycle {
-    prevent_destroy = true
+}
+
+resource "aws_s3_bucket_public_access_block" "website_bucket" {
+  bucket = aws_s3_bucket.website_bucket.id
+
+  block_public_acls       = true
+  ignore_public_acls      = true
+  block_public_policy     = true
+  restrict_public_buckets = true
+}
+
+resource "aws_s3_bucket_versioning" "website_bucket" {
+  bucket = aws_s3_bucket.website_bucket.id
+  versioning_configuration {
+    status = "Enabled"
   }
+}
+
+resource "aws_cloudfront_origin_access_control" "cloudfront_s3_access" {
+  name = "S3MdinicolaComAccess"
+  description = "Access mdinicola.com S3 bucket from CloudFront"
+  origin_access_control_origin_type = "s3"
+  signing_behavior = "always"
+  signing_protocol = "sigv4"
+}
+
+resource "aws_cloudfront_distribution" "www_mdinicola_com" {
+  origin {
+    domain_name = aws_s3_bucket.website_bucket.bucket_regional_domain_name
+    origin_id = var.cloudfront_origin_id
+    origin_access_control_id = aws_cloudfront_origin_access_control.cloudfront_s3_access.id
+  }
+
+  aliases = ["www.mdinicola.com", "mdinicola.com"]
+
+  enabled = true
+  is_ipv6_enabled = true
+  price_class = "PriceClass_100"
+
+  default_root_object = "index.html"
+
+  default_cache_behavior {
+    allowed_methods  = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+    target_origin_id = var.cloudfront_origin_id
+    cached_methods = ["GET", "HEAD"]
+    viewer_protocol_policy = "redirect-to-https"
+    forwarded_values {
+      query_string = false
+
+      cookies {
+        forward = "none"
+      }
+    }
+  }
+
+  viewer_certificate {
+    acm_certificate_arn = var.acm_certificate_arn
+    minimum_protocol_version = "TLSv1.2_2021"
+    ssl_support_method = "sni-only"
+  }
+
+  restrictions {
+    geo_restriction {
+      restriction_type = "none"
+    }
+  }
+}
+
+data "aws_iam_policy_document" "allow_acess_from_cloudfront" {
+  statement {
+    principals {
+      type = "Service"
+      identifiers = ["cloudfront.amazonaws.com"]
+    }
+
+    actions = ["s3:GetObject"]
+
+    resources = ["${aws_s3_bucket.website_bucket.arn}/*"]
+
+    condition {
+      test = "StringEquals"
+      variable = "AWS:SourceArn"
+      values = ["${aws_cloudfront_distribution.www_mdinicola_com.arn}"]
+    }
+  }
+}
+
+resource "aws_s3_bucket_policy" "website_bucket" {
+  bucket = aws_s3_bucket.website_bucket.id
+  policy = data.aws_iam_policy_document.allow_acess_from_cloudfront.json
 }
 
 resource "aws_route53_record" "mdinicola_com_A" {
@@ -163,7 +255,7 @@ resource "aws_codepipeline" "pipeline" {
       version = 1
       configuration = {
         FunctionName = "${var.service_name}-InvalidateContent"
-        UserParameters = var.website_distribution_id
+        UserParameters = aws_cloudfront_distribution.www_mdinicola_com.id
       }
       run_order = 4
     }
